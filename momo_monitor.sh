@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# put this as /etc/init.d/momo_monitor
+# put this as /usr/bin/momo_monitor.sh
 
 # --- 配置 ---
 CHECK_URL="https://www.gstatic.com/generate_204" # 谷歌的连接测试 URL
