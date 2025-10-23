@@ -79,6 +79,7 @@ log_msg "国际互联网检测 URL: ${CHECK_URL_1}, ${CHECK_URL_2}, ${CHECK_URL_
 
 # 内部状态变量
 NET_FAILURE_COUNT=0
+NOT_RUNNING_NOTIFIED=0  # 标记是否已通知过 momo 未正常运行
 
 # 2. 开始主循环
 while true
@@ -86,6 +87,12 @@ do
     # 3. 检查 momo 服务状态
     if /etc/init.d/momo status | grep -q "running"; then
         # 状态: Momo 正在运行
+        
+        # 如果之前处于非运行状态，现在恢复了，记录日志
+        if [ $NOT_RUNNING_NOTIFIED -eq 1 ]; then
+            log_msg "Momo 已恢复正常运行状态。"
+        fi
+        NOT_RUNNING_NOTIFIED=0  # 重置通知标记
 
         # 4. 检查互联网连接
         if check_network; then
@@ -125,10 +132,26 @@ do
             fi
         fi
     else
-        # 状态: Momo 未运行
+        # 状态: Momo 未正常运行（包括 stopped, active with no instances 等）
+        if [ $NOT_RUNNING_NOTIFIED -eq 0 ]; then
+            log_msg "检测到 Momo 未正常运行"
+            
+            # 发送通知
+            NOTIFY_BODY_NOT_RUNNING="Momo未正常运行"
+            RESPONSE=$(curl -s -w "\n%{http_code}" "${NOTIFY_API}/${NOTIFY_TITLE}/${NOTIFY_BODY_NOT_RUNNING}")
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+                log_msg "通知发送成功"
+            else
+                log_msg "通知发送失败 (HTTP: ${HTTP_CODE})"
+            fi
+            
+            NOT_RUNNING_NOTIFIED=1  # 标记已通知，避免重复
+        fi
+        
         if [ $NET_FAILURE_COUNT -gt 0 ]; then
-            log_msg "Momo 未运行, 重置网络失败计数器。"
-            NET_FAILURE_COUNT=0 # momo 停止了，重置计数器
+            NET_FAILURE_COUNT=0 # 重置网络失败计数器
         fi
         sleep ${MOMO_CHECK_INTERVAL}
     fi
