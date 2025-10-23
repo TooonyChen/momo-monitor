@@ -91,6 +91,14 @@ do
         # 如果之前处于非运行状态，现在恢复了，记录日志
         if [ $NOT_RUNNING_NOTIFIED -eq 1 ]; then
             log_msg "Momo 已恢复正常运行状态。"
+            NOTIFY_BODY_RUNNING="Momo已恢复正常运行状态。"
+            RESPONSE=$(curl -s -w "\n%{http_code}" "${NOTIFY_API}/${NOTIFY_TITLE}/${NOTIFY_BODY_RUNNING}")
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            if [ "$HTTP_CODE" = "200" ]; then
+                log_msg "通知发送成功"
+            else
+                log_msg "通知发送失败 (HTTP: ${HTTP_CODE})"
+            fi
         fi
         NOT_RUNNING_NOTIFIED=0  # 重置通知标记
 
@@ -139,7 +147,7 @@ do
             # 发送通知
             NOTIFY_BODY_NOT_RUNNING="Momo未正常运行"
             RESPONSE=$(curl -s -w "\n%{http_code}" "${NOTIFY_API}/${NOTIFY_TITLE}/${NOTIFY_BODY_NOT_RUNNING}")
-            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)a
             
             if [ "$HTTP_CODE" = "200" ]; then
                 log_msg "通知发送成功"
