@@ -9,18 +9,21 @@ MAX_TIME=5         # curl 总超时时间 (秒)
 MOMO_CHECK_INTERVAL=30 # momo 未运行时，的检查间隔 (秒)
 NET_CHECK_INTERVAL=5   # momo 运行时，的网络检查间隔 (秒)
 
-# --- 新增配置 (解决竞态条件) ---
-
-# 1. 启动延迟 (秒)
-#    脚本启动后等待 N 秒再开始监控。
-#    这可以防止在开机时，momo 尚未准备好时就误判。
-#    如果你的 momo 启动很慢，可以适当调高此值。
+# 启动延迟 (秒)
+#  脚本启动后等待 N 秒再开始监控。
+#  这可以防止在开机时，momo 尚未准备好时就误判。
+#  如果你的 momo 启动很慢，可以适当调高此值。
 BOOT_DELAY=90
 
-# 2. 失败阈值 (次)
-#    连续 N 次网络检查失败后，才执行 stop。
-#    这可以防止因网络瞬时抖动而误判。
-FAILURE_THRESHOLD=5
+# 失败阈值 (次)
+# 连续 N 次网络检查失败后，才执行 stop。
+# 这可以防止因网络瞬时抖动而误判。
+FAILURE_THRESHOLD=10
+
+# BARK 通知 API
+NOTIFY_API="https://api.day.app/PLACEHOLDER"
+NOTIFY_TITLE="Momo监控提醒"
+NOTIFY_BODY="Momo因为连接超时而自动关闭"
 
 # --- 脚本 ---
 
@@ -70,6 +73,10 @@ do
             
             if [ $NET_FAILURE_COUNT -ge $FAILURE_THRESHOLD ]; then
                 log_msg "已达到连续失败阈值。正在停止 momo..."
+
+                # 发送通知
+                curl -s "${NOTIFY_API}/${NOTIFY_TITLE}/${NOTIFY_BODY}" >/dev/null 2>&1
+
                 /etc/init.d/momo stop
                 NET_FAILURE_COUNT=0 # 停止后重置计数器
                 sleep ${MOMO_CHECK_INTERVAL} # 进入 momo 停止后的检查周期
